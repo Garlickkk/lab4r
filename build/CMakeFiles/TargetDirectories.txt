@@ -1,0 +1,3 @@
+/mnt/c/tmp/serg/lab4/build/CMakeFiles/Lab4.dir
+/mnt/c/tmp/serg/lab4/build/CMakeFiles/edit_cache.dir
+/mnt/c/tmp/serg/lab4/build/CMakeFiles/rebuild_cache.dir

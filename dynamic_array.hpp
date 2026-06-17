@@ -1,6 +1,7 @@
 #ifndef DYNAMIC_ARRAY_HPP
 #define DYNAMIC_ARRAY_HPP
 #include <stdexcept>
+#include <algorithm>
 #include "exceptions.hpp"
 
 template <class T>
@@ -10,11 +11,11 @@ private:
     int size;
 
 public:
-    DynamicArray(T* items, int count);// Копировать элементы из переданного массива
-    DynamicArray(int size); // Создать массив заданной длины
-    DynamicArray(const DynamicArray<T>& dynamicArray); // Копирующий конструктор
-    DynamicArray<T>& operator=(const DynamicArray<T>& other); // Оператор присваивания
-    ~DynamicArray(); // освобождение памяти
+    DynamicArray(T* items, int count);
+    DynamicArray(int size);
+    DynamicArray(const DynamicArray<T>& dynamicArray);
+    DynamicArray<T>& operator=(const DynamicArray<T>& other);
+    ~DynamicArray();
 
     T Get(int index) const;
     int GetSize() const;
@@ -28,17 +29,17 @@ DynamicArray<T>::DynamicArray(T* items, int count) {
         throw InvalidArgumentException("размер не может быть отрицательным");
     }
     if (items == nullptr) {
-        throw InvalidArgumentException("Указатель не должен 0");
+        throw InvalidArgumentException("Указатель не должен быть 0");
     }
     this->size = count;
-    this->data = new T[count]; // выделение памяти
+    this->data = new T[count];
     for (int i = 0; i < count; i++) {
         this->data[i] = items[i];
     }
 }
 
 template <class T>
-DynamicArray<T>::DynamicArray(int size) { // пустой массив этого размера
+DynamicArray<T>::DynamicArray(int size) {
     if (size < 0) {
         throw InvalidArgumentException("размер не может быть отрицательным");
     }
@@ -58,12 +59,18 @@ DynamicArray<T>::DynamicArray(const DynamicArray<T>& dynamicArray) {
 template <class T>
 DynamicArray<T>& DynamicArray<T>::operator=(const DynamicArray<T>& other) {
     if (this != &other) {
-        delete[] this->data;
-        this->size = other.size;
-        this->data = new T[this->size];
-        for (int i = 0; i < this->size; i++) {
-            this->data[i] = other.data[i];
+        T* newData = new T[other.size];
+        try {
+            for (int i = 0; i < other.size; i++) {
+                newData[i] = other.data[i];
+            }
+        } catch (...) {
+            delete[] newData;
+            throw;
         }
+        delete[] this->data;
+        this->data = newData;
+        this->size = other.size;
     }
     return *this;
 }
@@ -100,9 +107,14 @@ void DynamicArray<T>::Resize(int newSize) {
         throw InvalidArgumentException("Размер должен быть больше или равен 0");
     }
     T* newData = new T[newSize];
-    int copyCount = std::min(this->size, newSize); // кол-во эл которые копируются
-    for (int i = 0; i < copyCount; i++) {
-        newData[i] = this->data[i];
+    int copyCount = std::min(this->size, newSize);
+    try {
+        for (int i = 0; i < copyCount; i++) {
+            newData[i] = this->data[i];
+        }
+    } catch (...) {
+        delete[] newData;
+        throw;
     }
     delete[] this->data;
     this->data = newData;

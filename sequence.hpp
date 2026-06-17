@@ -24,15 +24,23 @@ public:
     Sequence<T>* Map(std::function<T(T)> f) const {
         Sequence<T>* result = Empty();
         for (int i = 0; i < GetLength(); i++) {
-            result->Append(f(Get(i)));
+            Sequence<T>* next = result->Append(f(Get(i)));
+            if (next != result) {
+                delete result;
+                result = next;
+            }
         }
         return result;
     }
 
-    Sequence<T>* Map(std::function<T(T, int)> f) const { // (М-2.2)
+    Sequence<T>* Map(std::function<T(T, int)> f) const {
         Sequence<T>* result = Empty();
         for (int i = 0; i < GetLength(); i++) {
-            result->Append(f(Get(i), i));
+            Sequence<T>* next = result->Append(f(Get(i), i));
+            if (next != result) {
+                delete result;
+                result = next;
+            }
         }
         return result;
     }
@@ -41,7 +49,11 @@ public:
         Sequence<T>* result = Empty();
         for (int i = 0; i < GetLength(); i++) {
             if (f(Get(i))) {
-                result->Append(Get(i));
+                Sequence<T>* next = result->Append(Get(i));
+                if (next != result) {
+                    delete result;
+                    result = next;
+                }
             }
         }
         return result;
@@ -59,7 +71,11 @@ public:
         int len = std::min(GetLength(), other->GetLength());
         Sequence<T>* result = Empty();
         for (int i = 0; i < len; i++) {
-            result->Append(f(Get(i), other->Get(i)));
+            Sequence<T>* next = result->Append(f(Get(i), other->Get(i)));
+            if (next != result) {
+                delete result;
+                result = next;
+            }
         }
         return result;
     }
@@ -69,7 +85,11 @@ public:
         for (int i = 0; i < GetLength(); i++) {
             Sequence<T>* sub = f(Get(i));
             for (int j = 0; j < sub->GetLength(); j++) {
-                result->Append(sub->Get(j));
+                Sequence<T>* next = result->Append(sub->Get(j));
+                if (next != result) {
+                    delete result;
+                    result = next;
+                }
             }
             delete sub;
         }
@@ -79,7 +99,11 @@ public:
     Sequence<T>* Skip(int n) const {
         Sequence<T>* result = Empty();
         for (int i = n; i < GetLength(); i++) {
-            result->Append(Get(i));
+            Sequence<T>* next = result->Append(Get(i));
+            if (next != result) {
+                delete result;
+                result = next;
+            }
         }
         return result;
     }
@@ -88,13 +112,17 @@ public:
         Sequence<T>* result = Empty();
         int limit = std::min(n, GetLength());
         for (int i = 0; i < limit; i++) {
-            result->Append(Get(i));
+            Sequence<T>* next = result->Append(Get(i));
+            if (next != result) {
+                delete result;
+                result = next;
+            }
         }
         return result;
     }
 
 
-    T operator[](int index) const { // перезагрузка операторов квад скобок для обрщ с эл посл как с мас
+    T operator[](int index) const {
         return Get(index);
     }
 

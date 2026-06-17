@@ -14,12 +14,12 @@ public:
                            " вышел за пределы [0, " + std::to_string(size) + ")") {}
 };
 
-class EmptyContainerException : public std::runtime_error {
+class EmptyContainerException : public IndexOutOfRangeException {
 public:
     explicit EmptyContainerException(const std::string& msg)
-        : std::runtime_error(msg) {}
+        : IndexOutOfRangeException(msg) {}
 
-    EmptyContainerException() : std::runtime_error("Контейнер пуст") {}
+    EmptyContainerException() : IndexOutOfRangeException("Контейнер пуст") {}
 };
 
 class InvalidArgumentException : public std::invalid_argument {

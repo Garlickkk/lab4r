@@ -5,6 +5,7 @@
 #include "array_sequence.hpp"
 #include "lazy_seq.hpp"
 #include "streams.hpp"
+#include "file_streams.hpp"
 #include "stream_coder.hpp"
 
 void runAllTests();
@@ -99,7 +100,7 @@ static void Configure(CoderConfig& cfg) {
 static void RunOnText(const CoderConfig& cfg, bool encode) {
     std::string line = readString("\nВведите текст (одной строкой): ");
     Sequence<char>* input = StringToSequence(line);
-    Sequence<char>* output = new MutableArraySequence<char>();
+    MutableArraySequence<char>* output = new MutableArraySequence<char>();
 
     SequenceReadStream<char> rs(input); // Поток чтения
     SequenceWriteStream<char> ws(output); // Поток записи

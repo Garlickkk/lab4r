@@ -5,12 +5,12 @@
 #include "dynamic_array.hpp"
 #include "exceptions.hpp"
 
-// Абстрактный кодек
 template <class T>
 class Codec {
 public:
     virtual T Encode(T item) const = 0;
     virtual T Decode(T item) const = 0;
+    virtual void Reset() const {} // сброс внутреннего состояния перед новым проходом; кодеки без состояния не переопределяют
     virtual ~Codec() = default;
 };
 
@@ -51,7 +51,7 @@ public:
         return static_cast<char>(c ^ k);
     }
     char Decode(char c) const override { return Encode(c); }
-    void Reset() const { keyPos = 0; } // сброс позиции ключа, если читаем новый файл
+    void Reset() const override { keyPos = 0; } // сброс позиции ключа перед новым проходом
 };
 
 
@@ -69,9 +69,9 @@ private:
         if (bufferSize == 0) throw InvalidArgumentException("Размер буфера должен быть > 0");
     }
 
-    size_t FillBuffer(ReadOnlyStream<T>* in) { // заполнение буфера
+    size_t FillBuffer(ReadOnlyStream<T>* in, size_t limit) { // заполнение буфера, но не более limit элементов
         size_t cnt = 0; // эл положили
-        while (cnt < bufferSize && !in->IsEndOfStream()) { // пока не забили буфер
+        while (cnt < limit && !in->IsEndOfStream()) { // пока не забили буфер
             buffer.Set(cnt, in->Read()); // читаем по эл
             cnt++;
         }
@@ -104,10 +104,11 @@ public:
 
     void Encode(ReadOnlyStream<T>* in, WriteOnlyStream<T>* out) {
         inBytes = outBytes = 0;
+        codec->Reset(); // кодек со внутренним состоянием начинает проход с чистого листа
         if (!in->IsOpen()) in->Open();
         if (!out->IsOpen()) out->Open();
         while (!in->IsEndOfStream()) {
-            size_t cnt = FillBuffer(in);
+            size_t cnt = FillBuffer(in, bufferSize);
             inBytes += cnt;
             FlushEncoded(out, cnt);
         }
@@ -115,30 +116,25 @@ public:
 
     void Decode(ReadOnlyStream<T>* in, WriteOnlyStream<T>* out) {
         inBytes = outBytes = 0;
+        codec->Reset();
         if (!in->IsOpen()) in->Open();
         if (!out->IsOpen()) out->Open();
         while (!in->IsEndOfStream()) {
-            size_t cnt = FillBuffer(in);
+            size_t cnt = FillBuffer(in, bufferSize);
             inBytes += cnt;
             FlushDecoded(out, cnt);
         }
     }
 
-    void EncodeN(ReadOnlyStream<T>* in, WriteOnlyStream<T>* out, size_t n) { // кондирование n эл
+    void EncodeN(ReadOnlyStream<T>* in, WriteOnlyStream<T>* out, size_t n) { // кодирование первых n эл
         inBytes = outBytes = 0;
+        codec->Reset();
         if (!in->IsOpen()) in->Open();
         if (!out->IsOpen()) out->Open();
         size_t remain = n;
         while (remain > 0 && !in->IsEndOfStream()) {
-            size_t want = bufferSize;
-            if (remain < bufferSize) {
-                want = remain;
-            }
-            size_t cnt = 0;
-            while (cnt < want && !in->IsEndOfStream()) {
-                buffer.Set(cnt, in->Read());
-                cnt++;
-            }
+            size_t want = remain < bufferSize ? remain : bufferSize;
+            size_t cnt = FillBuffer(in, want);
             inBytes += cnt;
             FlushEncoded(out, cnt);
             remain -= cnt;

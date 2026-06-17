@@ -7,6 +7,7 @@
 #include "array_sequence.hpp"
 #include "lazy_seq.hpp"
 #include "streams.hpp"
+#include "file_streams.hpp"
 #include "stream_coder.hpp"
 
 static int passed = 0;
@@ -59,8 +60,23 @@ struct TestAlphabetRule {
     }
 };
 
-//LazySequence
+struct TestMulTen {
+    int operator()(int x) const { return x * 10; }
+};
 
+struct TestIsEven {
+    bool operator()(int x) const { return x % 2 == 0; }
+};
+
+struct TestSum {
+    int operator()(int a, int b) const { return a + b; }
+};
+
+struct TestSquare {
+    int operator()(int x) const { return x * x; }
+};
+
+//LazySequence
 static void test_lazy_empty() {
     LazySequence<int> ls;
     assert(ls.GetLength() == 0);
@@ -176,21 +192,33 @@ static void test_lazy_concat() {
     delete c;
 }
 
+static void test_lazy_concat_with_array_sequence() {
+    int a[] = {1, 2};
+    int b[] = {3, 4};
+    LazySequence<int> la(a, 2);
+    MutableArraySequence<int> plain(b, 2);
+    LazySequence<int>* c = la.Concat(&plain);
+    assert(c->GetLength() == 4);
+    assert(c->Get(0) == 1);
+    assert(c->Get(3) == 4);
+    delete c;
+}
+
 static void test_lazy_map_where_reduce() {
     int d[] = {1, 2, 3, 4, 5};
     LazySequence<int> ls(d, 5);
 
-    LazySequence<int>* mapped = ls.Map([](int x) { return x * 10; });
+    LazySequence<int>* mapped = ls.Map(TestMulTen());
     assert(mapped->Get(0) == 10);
     assert(mapped->Get(4) == 50);
     delete mapped;
 
-    LazySequence<int>* filt = ls.Where([](int x) { return x % 2 == 0; });
+    LazySequence<int>* filt = ls.Where(TestIsEven());
     assert(filt->GetLength() == 2);
     assert(filt->Get(0) == 2);
     delete filt;
 
-    int s = ls.Reduce([](int a, int b) { return a + b; }, 0);
+    int s = ls.Reduce(TestSum(), 0);
     assert(s == 15);
 }
 
@@ -200,6 +228,27 @@ static void test_lazy_copy() {
     LazySequence<int> b(a);
     assert(b.GetLength() == 3);
     assert(b.Get(1) == 2);
+}
+
+static void test_lazy_ops_are_lazy() {
+    int d[] = {1, 2, 3, 4, 5};
+    LazySequence<int> ls(d, 5);
+
+    LazySequence<int>* m = ls.Map(TestMulTen());
+    assert(m->GetMaterializedCount() == 0);
+    assert(m->Get(2) == 30);
+    assert(m->GetMaterializedCount() == 3);
+    delete m;
+
+    LazySequence<int>* c = ls.Concat(&ls);
+    assert(c->GetMaterializedCount() == 0);
+    assert(c->Get(7) == 3);
+    delete c;
+
+    LazySequence<int>* sub = ls.GetSubsequence(1, 3);
+    assert(sub->GetMaterializedCount() == 0);
+    assert(sub->Get(1) == 3);
+    delete sub;
 }
 
 //Generator
@@ -212,9 +261,10 @@ static void test_generator_finite() {
     assert(g->GetNext() == 20);
     assert(g->GetNext() == 30);
     assert(!g->HasNext());
-    g->Reset();
-    assert(g->GetNext() == 10);
     delete g;
+    Generator<int>* g2 = ls.CreateGenerator();
+    assert(g2->GetNext() == 10);
+    delete g2;
 }
 
 static void test_generator_infinite() {
@@ -243,26 +293,16 @@ static void test_generator_try_get_next() {
     delete g;
 }
 
-static void test_generator_insert_at() {
+static void test_generator_insert() {
     int d[] = {1, 2, 3};
     LazySequence<int> ls(d, 3);
     Generator<int>* g0 = ls.CreateGenerator();
-    Generator<int>* g = g0->InsertAt(99, 1);
-    assert(g->GetNext() == 1);
+
+    Generator<int>* g = g0->Insert(99);
     assert(g->GetNext() == 99);
+    assert(g->GetNext() == 1);
     assert(g->GetNext() == 2);
     assert(g->GetNext() == 3);
-    delete g0; delete g;
-}
-
-static void test_generator_remove_at() {
-    int d[] = {1, 2, 3, 4};
-    LazySequence<int> ls(d, 4);
-    Generator<int>* g0 = ls.CreateGenerator();
-    Generator<int>* g = g0->RemoveAt(1);
-    assert(g->GetNext() == 1);
-    assert(g->GetNext() == 3);
-    assert(g->GetNext() == 4);
     delete g0; delete g;
 }
 
@@ -277,30 +317,18 @@ static void test_generator_append() {
     delete g0; delete g;
 }
 
-static void test_generator_mods_combined() {
-    int d[] = {10, 20, 30, 40};
-    LazySequence<int> ls(d, 4);
-    Generator<int>* g0 = ls.CreateGenerator();
-    Generator<int>* g1 = g0->InsertAt(99, 2);
-    Generator<int>* g2 = g1->RemoveAt(3);
-    assert(g2->GetNext() == 10);
-    assert(g2->GetNext() == 20);
-    assert(g2->GetNext() == 99);
-    assert(g2->GetNext() == 30);
-    delete g0; delete g1; delete g2;
-}
-
 static void test_generator_bulk_insert() {
     int src[] = {1, 2};
     int ins[] = {7, 8, 9};
     LazySequence<int> ls(src, 2);
     MutableArraySequence<int> insertion(ins, 3);
     Generator<int>* g0 = ls.CreateGenerator();
-    Generator<int>* g = g0->InsertAt(&insertion, 1);
-    assert(g->GetNext() == 1);
+
+    Generator<int>* g = g0->Insert(&insertion);
     assert(g->GetNext() == 7);
     assert(g->GetNext() == 8);
     assert(g->GetNext() == 9);
+    assert(g->GetNext() == 1);
     assert(g->GetNext() == 2);
     delete g0; delete g;
 }
@@ -327,6 +355,88 @@ static void test_generator_ctor_with_bulk_insert() {
     assert(g->GetNext() == 8);
     assert(g->GetNext() == 2);
     delete g;
+}
+
+static void test_generator_bounded_memory() {
+    TestIncRule rule;
+    int init[] = {0};
+    MutableArraySequence<int> initial(init, 1);
+    LazySequence<int> nats(rule, &initial, -1);
+
+    Generator<int>* g = nats.CreateGenerator();
+    for (int i = 0; i < 1000; i++) {
+        assert(g->GetNext() == i);
+    }
+    assert(nats.GetMaterializedCount() == 1);
+    delete g;
+}
+
+static void test_generator_fibonacci_window() {
+    TestFibRule rule;
+    long init[] = {1, 1};
+    MutableArraySequence<long> initial(init, 2);
+    LazySequence<long> fib(rule, &initial, -1);
+
+    Generator<long>* g = fib.CreateGenerator();
+    long expected[] = {1, 1, 2, 3, 5, 8, 13, 21, 34, 55};
+    for (int i = 0; i < 10; i++) {
+        assert(g->GetNext() == expected[i]);
+    }
+    assert(fib.GetMaterializedCount() == 2);
+    delete g;
+}
+
+static void test_generator_remove_by_value() {
+    int d[] = {1, 2, 3, 2};
+    LazySequence<int> ls(d, 4);
+    Generator<int>* g0 = ls.CreateGenerator();
+
+    Generator<int>* g1 = g0->Remove(2);
+    assert(g1->GetNext() == 1);
+    assert(g1->GetNext() == 3);
+    assert(g1->GetNext() == 2);
+    assert(!g1->HasNext());
+
+    int twice[] = {2, 2};
+    MutableArraySequence<int> values(twice, 2);
+    Generator<int>* g2 = g0->Remove(&values); // оба вхождения
+    assert(g2->GetNext() == 1);
+    assert(g2->GetNext() == 3);
+    assert(!g2->HasNext());
+
+    Generator<int>* g3 = g0->Remove(99);
+    assert(g3->GetNext() == 1);
+    assert(g3->GetNext() == 2);
+    assert(g3->GetNext() == 3);
+    assert(g3->GetNext() == 2);
+    assert(!g3->HasNext());
+
+    delete g0; delete g1; delete g2; delete g3;
+}
+
+static void test_generator_remove_by_value_infinite_throws() {
+    TestIncRule rule;
+    int init[] = {0};
+    MutableArraySequence<int> initial(init, 1);
+    LazySequence<int> nats(rule, &initial, -1);
+    Generator<int>* g = nats.CreateGenerator();
+    bool thrown = false;
+    try {
+        Generator<int>* g2 = g->Remove(5);
+        delete g2;
+    } catch (const InfiniteSequenceException&) { thrown = true; }
+    assert(thrown);
+    delete g;
+}
+
+static void test_empty_getfirst_is_index_out_of_range() {
+    LazySequence<int> ls;
+    bool thrown = false;
+    try { ls.GetFirst(); } catch (const IndexOutOfRangeException&) { thrown = true; }
+    assert(thrown);
+    thrown = false;
+    try { ls.GetLast(); } catch (const IndexOutOfRangeException&) { thrown = true; }
+    assert(thrown);
 }
 
 //Streams
@@ -442,7 +552,6 @@ static void test_coder_roundtrip_xor() {
     const char* in = "Test message";
     int len = static_cast<int>(std::strlen(in));
     Sequence<char>* enc = RunCoder(in, len, &codec, 8, true);
-    codec.Reset();
     char* tmp = new char[enc->GetLength()];
     for (int i = 0; i < enc->GetLength(); i++) tmp[i] = enc->Get(i);
     Sequence<char>* dec = RunCoder(tmp, enc->GetLength(), &codec, 8, false);
@@ -552,7 +661,7 @@ static void test_lazy_map_infinite() {
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
     LazySequence<int> nats(rule, &initial, -1);
-    LazySequence<int>* squared = nats.Map([](int x) { return x * x; });
+    LazySequence<int>* squared = nats.Map(TestSquare());
     assert(squared->Get(0) == 0);
     assert(squared->Get(3) == 9);
     assert(squared->Get(10) == 100);
@@ -564,7 +673,7 @@ static void test_lazy_zip_finite() {
     int b[] = {10, 20, 30};
     LazySequence<int> la(a, 4);
     LazySequence<int> lb(b, 3);
-    LazySequence<int>* z = la.Zip(&lb, [](int x, int y) { return x + y; });
+    LazySequence<int>* z = la.Zip(&lb, TestSum());
     assert(z->GetLength() == 3);
     assert(z->Get(0) == 11);
     assert(z->Get(2) == 33);
@@ -579,7 +688,7 @@ static void test_lazy_zip_finite_infinite() {
     MutableArraySequence<int> initial(init, 1);
     LazySequence<int> nats(rule, &initial, -1);
 
-    LazySequence<int>* z = la.Zip(&nats, [](int x, int y) { return x + y; });
+    LazySequence<int>* z = la.Zip(&nats, TestSum());
     assert(z->Get(0) == 11);
     assert(z->Get(2) == 33);
     delete z;
@@ -595,7 +704,7 @@ static void test_lazy_zip_infinite() {
     LazySequence<int> a(ruleA, &ia, -1);
     LazySequence<int> b(ruleB, &ib, -1);
 
-    LazySequence<int>* z = a.Zip(&b, [](int x, int y) { return x + y; });
+    LazySequence<int>* z = a.Zip(&b, TestSum());
     assert(z->Get(0) == 2);
     assert(z->Get(3) == 12);
     delete z;
@@ -607,95 +716,6 @@ static std::string MakeTempFilePath(const std::string& tag) {
     std::snprintf(buf, sizeof(buf), "/tmp/lab4_test_%s_%d.dat",
                   tag.c_str(), static_cast<int>(std::rand()));
     return std::string(buf);
-}
-
-namespace {
-
-class TestFileReadStream : public ReadOnlyStream<char> {
-private:
-    std::string path;
-    std::ifstream* fin;
-    bool eof;
-    size_t position;
-    void RefreshEof() { eof = (fin == nullptr) || fin->peek() == EOF; }
-
-public:
-    TestFileReadStream(const std::string& p)
-        : path(p), fin(nullptr), eof(true), position(0) {}
-    ~TestFileReadStream() override { Close(); }
-
-    void Open() override {
-        if (fin != nullptr) Close();
-        fin = new std::ifstream(path.c_str(), std::ios::binary);
-        if (!fin->is_open()) { delete fin; fin = nullptr; throw EndOfStreamException("файл не открыт"); }
-        this->isOpen = true;
-        position = 0;
-        RefreshEof();
-    }
-
-    void Close() override {
-        if (fin) { fin->close(); delete fin; fin = nullptr; }
-        this->isOpen = false;
-    }
-
-    bool IsEndOfStream() const override { return eof; }
-
-    char Read() override {
-        if (!this->isOpen) throw StreamNotOpenException();
-        if (eof) throw EndOfStreamException();
-        char c;
-        if (!fin->get(c)) { eof = true; throw EndOfStreamException(); }
-        position++;
-        eof = fin->peek() == EOF;
-        return c;
-    }
-
-    size_t GetPosition() const override { return position; }
-    bool IsCanSeek() const override { return true; }
-    size_t Seek(size_t index) override {
-        if (!this->isOpen) throw StreamNotOpenException();
-        fin->clear();
-        fin->seekg(static_cast<std::streamoff>(index), std::ios::beg);
-        position = index;
-        RefreshEof();
-        return position;
-    }
-    bool IsCanGoBack() const override { return true; }
-};
-
-class TestFileWriteStream : public WriteOnlyStream<char> {
-private:
-    std::string path;
-    std::ofstream* fout;
-    size_t position;
-public:
-    TestFileWriteStream(const std::string& p)
-        : path(p), fout(nullptr), position(0) {}
-    ~TestFileWriteStream() override { Close(); }
-
-    void Open() override {
-        if (fout != nullptr) Close();
-        fout = new std::ofstream(path.c_str(), std::ios::binary);
-        if (!fout->is_open()) { delete fout; fout = nullptr; throw EndOfStreamException("файл не открыт"); }
-        this->isOpen = true;
-        position = 0;
-    }
-
-    void Close() override {
-        if (fout) { fout->close(); delete fout; fout = nullptr; }
-        this->isOpen = false;
-    }
-
-    size_t Write(char c) override {
-        if (!this->isOpen) throw StreamNotOpenException();
-        fout->put(c);
-        position++;
-        return position;
-    }
-
-    size_t GetPosition() const override { return position; }
-};
-
 }
 
 static void test_file_streams_roundtrip() {
@@ -711,16 +731,16 @@ static void test_file_streams_roundtrip() {
     }
 
     {
-        TestFileReadStream rs(inPath);
-        TestFileWriteStream ws(encPath);
+        FileReadStream rs(inPath);
+        FileWriteStream ws(encPath);
         CaesarCodec codec(5);
         StreamCoder<char> coder(&codec, 8);
         coder.Encode(&rs, &ws);
     }
 
     {
-        TestFileReadStream rs(encPath);
-        TestFileWriteStream ws(outPath);
+        FileReadStream rs(encPath);
+        FileWriteStream ws(outPath);
         CaesarCodec codec(5);
         StreamCoder<char> coder(&codec, 8);
         coder.Decode(&rs, &ws);
@@ -746,7 +766,7 @@ static void test_file_stream_seek() {
         std::ofstream fout(path.c_str(), std::ios::binary);
         fout << "ABCDEFGH";
     }
-    TestFileReadStream rs(path);
+    FileReadStream rs(path);
     rs.Open();
     assert(rs.Read() == 'A');
     rs.Seek(4);
@@ -845,18 +865,23 @@ void runAllTests() {
     runTest(test_lazy_subsequence, "GetSubsequence");
     runTest(test_lazy_append_prepend_insert, "Append/Prepend/InsertAt");
     runTest(test_lazy_concat, "Concat");
+    runTest(test_lazy_concat_with_array_sequence, "Concat с обычной ArraySequence");
     runTest(test_lazy_map_where_reduce, "Map/Where/Reduce");
     runTest(test_lazy_copy, "копирование");
+    runTest(test_lazy_ops_are_lazy, "ленивость Map/Concat/GetSubsequence");
     runTest(test_generator_finite, "конечный генератор");
     runTest(test_generator_infinite, "бесконечный генератор");
     runTest(test_generator_try_get_next, "TryGetNext");
-    runTest(test_generator_insert_at, "Generator::InsertAt");
-    runTest(test_generator_remove_at, "Generator::RemoveAt");
+    runTest(test_generator_insert, "Generator::Insert (позиция)");
     runTest(test_generator_append, "Generator::Append");
-    runTest(test_generator_mods_combined, "комбинация INSERT+REMOVE");
-    runTest(test_generator_bulk_insert, "bulk InsertAt");
+    runTest(test_generator_bulk_insert, "bulk Insert");
     runTest(test_generator_ctor_with_insert, "конструктор с предзаданной вставкой");
-    runTest(test_generator_ctor_with_bulk_insert, "конструктор с bulk-вставкой");
+    runTest(test_generator_ctor_with_bulk_insert, "конструктор");
+    runTest(test_generator_bounded_memory, "генератор не растит кэш владельца");
+    runTest(test_generator_fibonacci_window, "Фибоначчи через окно генератора");
+    runTest(test_generator_remove_by_value, "Remove по значению (одиночный и пакетный)");
+    runTest(test_generator_remove_by_value_infinite_throws, "Remove по значению у бесконечной бросает");
+    runTest(test_empty_getfirst_is_index_out_of_range, "пустой список — IndexOutOfRange по спецификации");
     runTest(test_lazy_prepend_infinite, "Prepend в бесконечную");
     runTest(test_lazy_insert_infinite, "InsertAt в бесконечную");
     runTest(test_lazy_concat_finite_infinite, "Concat finite+infinite");

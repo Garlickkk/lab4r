@@ -8,71 +8,76 @@
 template<class T>
 class ArraySequence : public Sequence<T> {
 protected:
-    DynamicArray<T> *items;
-
+    DynamicArray<T> *items; // хранилище с запасом: ёмкость массива >= count
+    int count; // фактическое число элементов
 
     virtual ArraySequence<T> *Instance() = 0; // mutable возвращает this, immutable - копию
 
+    void EnsureCapacity(int needed) {
+        if (needed <= items->GetSize()) return;
+        int newCapacity = items->GetSize() == 0 ? 1 : items->GetSize() * 2;
+        if (newCapacity < needed) newCapacity = needed;
+        items->Resize(newCapacity);
+    }
 
     void AppendInternal(T item) {
-        items->Resize(items->GetSize() + 1);
-        items->Set(items->GetSize() - 1, item);
+        EnsureCapacity(count + 1);
+        items->Set(count, item);
+        count++;
     }
 
     void PrependInternal(T item) {
-        int oldSize = items->GetSize();
-        items->Resize(oldSize + 1);
-        for (int i = oldSize; i > 0; i--) {
-            items->Set(i, items->Get(i - 1));
-        }
-        items->Set(0, item);
+        InsertAtInternal(item, 0);
     }
 
     void InsertAtInternal(T item, int index) {
-        if (index < 0 || index > items->GetSize()) {
-            throw IndexOutOfRangeException(index, items->GetSize());
+        if (index < 0 || index > count) {
+            throw IndexOutOfRangeException(index, count);
         }
-        int oldSize = items->GetSize();
-        items->Resize(oldSize + 1);
-        for (int i = oldSize; i > index; i--) {
+        EnsureCapacity(count + 1);
+        for (int i = count; i > index; i--) {
             items->Set(i, items->Get(i - 1));
         }
         items->Set(index, item);
+        count++;
     }
 
 public:
-    ArraySequence() : items(new DynamicArray<T>(0)) {
+    ArraySequence() : items(new DynamicArray<T>(0)), count(0) {
     }
 
-    ArraySequence(T *data, int count) : items(new DynamicArray<T>(data, count)) {
+    ArraySequence(T *data, int n) : items(new DynamicArray<T>(data, n)), count(n) {
     }
 
-    ArraySequence(const DynamicArray<T> &array) : items(new DynamicArray<T>(array)) {
+    ArraySequence(const DynamicArray<T> &array) : items(new DynamicArray<T>(array)), count(array.GetSize()) {
     }
 
-    ArraySequence(const ArraySequence<T> &other) : items(new DynamicArray<T>(*other.items)) {
+    ArraySequence(const ArraySequence<T> &other) : items(new DynamicArray<T>(*other.items)), count(other.count) {
     }
 
     ~ArraySequence() override { delete items; }
 
     T GetFirst() const override {
-        if (items->GetSize() == 0)
+        if (count == 0)
             throw IndexOutOfRangeException("Последовательность пуста");
         return items->Get(0);
     }
 
     T GetLast() const override {
-        if (items->GetSize() == 0)
+        if (count == 0)
             throw IndexOutOfRangeException("Последовательность пуста");
-        return items->Get(items->GetSize() - 1);
+        return items->Get(count - 1);
     }
 
     T Get(int index) const override {
+        if (index < 0 || index >= count) {
+            throw IndexOutOfRangeException(index, count);
+        }
         return items->Get(index);
     }
 
     int GetLength() const override {
-        return items->GetSize();
+        return count;
     }
 
     Sequence<T> *GetSubsequence(int startIndex, int endIndex) const override;
@@ -110,20 +115,20 @@ Sequence<T> *ArraySequence<T>::Empty() const {
 
 template<class T>
 Sequence<T> *ArraySequence<T>::GetSubsequence(int startIndex, int endIndex) const {
-    if (startIndex < 0 || startIndex >= items->GetSize())
-        throw IndexOutOfRangeException(startIndex, items->GetSize());
-    if (endIndex < 0 || endIndex >= items->GetSize())
-        throw IndexOutOfRangeException(endIndex, items->GetSize());
+    if (startIndex < 0 || startIndex >= count)
+        throw IndexOutOfRangeException(startIndex, count);
+    if (endIndex < 0 || endIndex >= count)
+        throw IndexOutOfRangeException(endIndex, count);
     if (endIndex < startIndex)
         throw IndexOutOfRangeException("startIndex > endIndex");
 
-    int count = endIndex - startIndex + 1;
-    T *buf = new T[count];
-    for (int i = 0; i < count; i++) {
+    int n = endIndex - startIndex + 1;
+    T *buf = new T[n];
+    for (int i = 0; i < n; i++) {
         buf[i] = items->Get(startIndex + i);
     }
 
-    auto *result = new MutableArraySequence<T>(buf, count);
+    auto *result = new MutableArraySequence<T>(buf, n);
     delete[] buf;
     return result;
 }
@@ -149,24 +154,6 @@ public:
     using ArraySequence<T>::ArraySequence;
     MutableArraySequence(const ArraySequence<T> &other) : ArraySequence<T>(other) {
     }
-    void RemoveFirst() {
-        if (this->items->GetSize() == 0) {
-            throw EmptyContainerException("Последовательность пуста");
-        }
-        int oldSize = this->items->GetSize();
-        for (int i = 0; i < oldSize - 1; i++) {
-            this->items->Set(i, this->items->Get(i + 1));
-        }
-        this->items->Resize(oldSize - 1);
-    }
-
-    void RemoveLast() {
-        if (this->items->GetSize() == 0) {
-            throw EmptyContainerException("Последовательность пуста");
-        }
-        this->items->Resize(this->items->GetSize() - 1);
-    }
-
 };
 
 //Immutable

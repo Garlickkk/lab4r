@@ -316,7 +316,7 @@ struct MapRule {
     LazySequence<T>* self; // ориг список
     std::function<T(T)> f; // ф-ция преобразования
     MapRule(LazySequence<T>* s, std::function<T(T)> func) : self(s), f(func) {}
-    T operator()(Sequence<T>* curr) const {
+    T operator()(Sequence<T>* curr) const { // перезагрузка оператора круглые скобки
         int n = curr->GetLength(); // текущий шаг
         return f(self->Get(n)); // перед старый эл ф фун преоб
     }

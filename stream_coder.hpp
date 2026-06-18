@@ -10,7 +10,7 @@ class Codec {
 public:
     virtual T Encode(T item) const = 0;
     virtual T Decode(T item) const = 0;
-    virtual void Reset() const {} // сброс внутреннего состояния перед новым проходом; кодеки без состояния не переопределяют
+    virtual void Reset() const {} // сброс внутреннего состояния перед новым проходом;
     virtual ~Codec() = default;
 };
 

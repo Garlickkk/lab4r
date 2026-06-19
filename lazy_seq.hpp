@@ -17,7 +17,7 @@ private:
 
 public:
     Optional() : val(), has_value(false) {} // Конструктор по умолчанию: значения нет
-    explicit Optional(T v) : val(v), has_value(true) {}// Конструктор со значением
+    explicit Optional(T v) : val(v), has_value(true) {}// Конструктор со значением (запрещено неявное приведение)
 
     bool HasValue() const { return has_value; }
 
@@ -315,7 +315,7 @@ template <class T>
 struct MapRule {
     LazySequence<T>* self; // ориг список
     std::function<T(T)> f; // ф-ция преобразования
-    MapRule(LazySequence<T>* s, std::function<T(T)> func) : self(s), f(func) {}
+    MapRule(LazySequence<T>* s, std::function<T(T)> func) : self(s), f(func) {} // конструткор
     T operator()(Sequence<T>* curr) const { // перезагрузка оператора круглые скобки
         int n = curr->GetLength(); // текущий шаг
         return f(self->Get(n)); // перед старый эл ф фун преоб
@@ -329,7 +329,7 @@ struct ZipRule {
     std::function<T(T, T)> f;
     ZipRule(LazySequence<T>* s, LazySequence<T>* o, std::function<T(T, T)> func)
         : selfPtr(s), otherPtr(o), f(func) {}
-    T operator()(Sequence<T>* curr) const {
+    T operator()(Sequence<T>* curr) const { // для сохранения указателей на 2 п-ти
         int n = curr->GetLength();
         return f(selfPtr->Get(n), otherPtr->Get(n));
     }
@@ -346,7 +346,7 @@ struct SubseqRule {
 };
 
 template <class T>
-struct InsertOneRule {
+struct InsertOneRule { // вставка эл в середиину
     Sequence<T>* self;
     int index; // инд куда вставляем
     T item; // что вставляем
@@ -392,7 +392,7 @@ private:
         }
     }
 
-    void Materialize(int upTo) const {  // доступ к эл через мемоизацию. Если эл уже вычислен
+    void Materialize(int upTo) const {  // доступ к эл через мемоизацию. Если эл уже вычислен (исп в get..)
         if (upTo < 0) {
             throw IndexOutOfRangeException(upTo, 0);
         }
@@ -400,7 +400,7 @@ private:
             throw IndexOutOfRangeException(upTo, totalLength);
         }
         if (!hasRule) {
-            if (upTo >= storage->GetLength()) {
+            if (upTo >= storage->GetLength()) { // storage - эл, которые уже вычислены
                 throw IndexOutOfRangeException(upTo, storage->GetLength());
             }
             return;

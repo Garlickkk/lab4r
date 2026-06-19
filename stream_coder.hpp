@@ -20,7 +20,7 @@ private:
     int shift; // ключ(сколько сдвиг)
     static char ShiftLatin(char c, int s) {
         if (c >= 'a' && c <= 'z') {
-            return static_cast<char>('a' + ((c - 'a' + s) % 26 + 26) % 26);
+            return static_cast<char>('a' + ((c - 'a' + s) % 26 + 26) % 26); // преобр из int к chat
         }
         if (c >= 'A' && c <= 'Z') {
             return static_cast<char>('A' + ((c - 'A' + s) % 26 + 26) % 26);

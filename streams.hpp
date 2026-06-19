@@ -19,7 +19,7 @@ public:
     virtual T Read() = 0;
     virtual size_t GetPosition() const = 0;
     virtual bool IsCanSeek() const = 0; // можно ли обратиться к предыдущим элементам
-    virtual size_t Seek(size_t index) = 0; // перем на заданный обр индекс
+    virtual size_t Seek(size_t index) = 0; // перемотка на заданный индекс
     virtual bool IsCanGoBack() const = 0; // может ли перем на пред эл
 
     virtual void Open() { isOpen = true; }

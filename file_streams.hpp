@@ -13,7 +13,7 @@ private:
     bool eof; // флаг конца файла
     size_t position; // инд прочитанного байта
 
-    void RefreshEof() { eof = (fin == nullptr) || (fin->peek() == EOF); }
+    void RefreshEof() { eof = (fin == nullptr) || (fin->peek() == EOF); } // не закончился ли файл?
 
 public:
     FileReadStream(const std::string& p) : path(p), fin(nullptr), eof(true), position(0) {} // флаг конца

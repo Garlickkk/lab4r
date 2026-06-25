@@ -10,10 +10,10 @@
 #include "file_streams.hpp"
 #include "stream_coder.hpp"
 
-static int passed = 0;
-static int failed = 0;
+int passed = 0;
+int failed = 0;
 
-static void runTest(void (*test)(), const std::string& name) {
+void runTest(void (*test)(), const std::string& name) {
     try {
         test();
         passed++;
@@ -77,7 +77,7 @@ struct TestSquare {
 };
 
 //LazySequence
-static void test_lazy_empty() {
+void test_lazy_empty() {
     LazySequence<int> ls;
     assert(ls.GetLength() == 0);
     assert(ls.GetMaterializedCount() == 0);
@@ -87,7 +87,7 @@ static void test_lazy_empty() {
     assert(thrown);
 }
 
-static void test_lazy_from_array() {
+void test_lazy_from_array() {
     int data[] = {10, 20, 30, 40, 50};
     LazySequence<int> ls(data, 5);
     assert(ls.GetLength() == 5);
@@ -96,7 +96,7 @@ static void test_lazy_from_array() {
     assert(ls.GetMaterializedCount() == 5);
 }
 
-static void test_lazy_from_sequence() {
+void test_lazy_from_sequence() {
     int data[] = {1, 2, 3};
     MutableArraySequence<int> seq(data, 3);
     LazySequence<int> ls(&seq);
@@ -105,7 +105,7 @@ static void test_lazy_from_sequence() {
     assert(ls.Get(2) == 3);
 }
 
-static void test_lazy_fibonacci() {
+void test_lazy_fibonacci() {
     TestFibRule rule;
     long init[] = {1, 1};
     MutableArraySequence<long> initial(init, 2);
@@ -118,7 +118,7 @@ static void test_lazy_fibonacci() {
     assert(fib.Get(9) == 55);
 }
 
-static void test_lazy_finite_with_rule() {
+void test_lazy_finite_with_rule() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -129,7 +129,7 @@ static void test_lazy_finite_with_rule() {
     assert(ls.Get(5) == 5);
 }
 
-static void test_lazy_out_of_range() {
+void test_lazy_out_of_range() {
     int data[] = {1, 2, 3};
     LazySequence<int> ls(data, 3);
     bool thrown = false;
@@ -141,7 +141,7 @@ static void test_lazy_out_of_range() {
     assert(thrown);
 }
 
-static void test_lazy_infinite_getlast_throws() {
+void test_lazy_infinite_getlast_throws() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -151,7 +151,7 @@ static void test_lazy_infinite_getlast_throws() {
     assert(thrown);
 }
 
-static void test_lazy_subsequence() {
+void test_lazy_subsequence() {
     int data[] = {1, 2, 3, 4, 5};
     LazySequence<int> ls(data, 5);
     LazySequence<int>* sub = ls.GetSubsequence(1, 3);
@@ -161,7 +161,7 @@ static void test_lazy_subsequence() {
     delete sub;
 }
 
-static void test_lazy_append_prepend_insert() {
+void test_lazy_append_prepend_insert() {
     int data[] = {2, 3, 4};
     LazySequence<int> ls(data, 3);
 
@@ -182,7 +182,7 @@ static void test_lazy_append_prepend_insert() {
     delete i;
 }
 
-static void test_lazy_concat() {
+void test_lazy_concat() {
     int a[] = {1, 2}, b[] = {3, 4, 5};
     LazySequence<int> la(a, 2), lb(b, 3);
     LazySequence<int>* c = la.Concat(&lb);
@@ -192,7 +192,7 @@ static void test_lazy_concat() {
     delete c;
 }
 
-static void test_lazy_concat_with_array_sequence() {
+void test_lazy_concat_with_array_sequence() {
     int a[] = {1, 2};
     int b[] = {3, 4};
     LazySequence<int> la(a, 2);
@@ -204,7 +204,7 @@ static void test_lazy_concat_with_array_sequence() {
     delete c;
 }
 
-static void test_lazy_map_where_reduce() {
+void test_lazy_map_where_reduce() {
     int d[] = {1, 2, 3, 4, 5};
     LazySequence<int> ls(d, 5);
 
@@ -222,7 +222,7 @@ static void test_lazy_map_where_reduce() {
     assert(s == 15);
 }
 
-static void test_lazy_copy() {
+void test_lazy_copy() {
     int d[] = {1, 2, 3};
     LazySequence<int> a(d, 3);
     LazySequence<int> b(a);
@@ -230,7 +230,7 @@ static void test_lazy_copy() {
     assert(b.Get(1) == 2);
 }
 
-static void test_lazy_ops_are_lazy() {
+void test_lazy_ops_are_lazy() {
     int d[] = {1, 2, 3, 4, 5};
     LazySequence<int> ls(d, 5);
 
@@ -252,7 +252,7 @@ static void test_lazy_ops_are_lazy() {
 }
 
 //Generator
-static void test_generator_finite() {
+void test_generator_finite() {
     int d[] = {10, 20, 30};
     LazySequence<int> ls(d, 3);
     Generator<int>* g = ls.CreateGenerator();
@@ -267,7 +267,7 @@ static void test_generator_finite() {
     delete g2;
 }
 
-static void test_generator_infinite() {
+void test_generator_infinite() {
     TestPow2Rule rule;
     int init[] = {1};
     MutableArraySequence<int> initial(init, 1);
@@ -281,7 +281,7 @@ static void test_generator_infinite() {
     delete g;
 }
 
-static void test_generator_try_get_next() {
+void test_generator_try_get_next() {
     int d[] = {7, 8};
     LazySequence<int> ls(d, 2);
     Generator<int>* g = ls.CreateGenerator();
@@ -293,7 +293,7 @@ static void test_generator_try_get_next() {
     delete g;
 }
 
-static void test_generator_insert() {
+void test_generator_insert() {
     int d[] = {1, 2, 3};
     LazySequence<int> ls(d, 3);
     Generator<int>* g0 = ls.CreateGenerator();
@@ -306,7 +306,7 @@ static void test_generator_insert() {
     delete g0; delete g;
 }
 
-static void test_generator_append() {
+void test_generator_append() {
     int d[] = {1, 2};
     LazySequence<int> ls(d, 2);
     Generator<int>* g0 = ls.CreateGenerator();
@@ -317,7 +317,7 @@ static void test_generator_append() {
     delete g0; delete g;
 }
 
-static void test_generator_bulk_insert() {
+void test_generator_bulk_insert() {
     int src[] = {1, 2};
     int ins[] = {7, 8, 9};
     LazySequence<int> ls(src, 2);
@@ -333,7 +333,7 @@ static void test_generator_bulk_insert() {
     delete g0; delete g;
 }
 
-static void test_generator_ctor_with_insert() {
+void test_generator_ctor_with_insert() {
     int d[] = {1, 2, 3};
     LazySequence<int> ls(d, 3);
     Generator<int>* g = new Generator<int>(&ls, 1, 99);
@@ -344,7 +344,7 @@ static void test_generator_ctor_with_insert() {
     delete g;
 }
 
-static void test_generator_ctor_with_bulk_insert() {
+void test_generator_ctor_with_bulk_insert() {
     int d[] = {1, 2};
     int ins[] = {7, 8};
     LazySequence<int> ls(d, 2);
@@ -357,7 +357,7 @@ static void test_generator_ctor_with_bulk_insert() {
     delete g;
 }
 
-static void test_generator_bounded_memory() {
+void test_generator_bounded_memory() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -371,7 +371,7 @@ static void test_generator_bounded_memory() {
     delete g;
 }
 
-static void test_generator_fibonacci_window() {
+void test_generator_fibonacci_window() {
     TestFibRule rule;
     long init[] = {1, 1};
     MutableArraySequence<long> initial(init, 2);
@@ -386,7 +386,7 @@ static void test_generator_fibonacci_window() {
     delete g;
 }
 
-static void test_generator_remove_by_value() {
+void test_generator_remove_by_value() {
     int d[] = {1, 2, 3, 2};
     LazySequence<int> ls(d, 4);
     Generator<int>* g0 = ls.CreateGenerator();
@@ -414,7 +414,7 @@ static void test_generator_remove_by_value() {
     delete g0; delete g1; delete g2; delete g3;
 }
 
-static void test_generator_remove_by_value_infinite_throws() {
+void test_generator_remove_by_value_infinite_throws() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -429,7 +429,7 @@ static void test_generator_remove_by_value_infinite_throws() {
     delete g;
 }
 
-static void test_empty_getfirst_is_index_out_of_range() {
+void test_empty_getfirst_is_index_out_of_range() {
     LazySequence<int> ls;
     bool thrown = false;
     try { ls.GetFirst(); } catch (const IndexOutOfRangeException&) { thrown = true; }
@@ -440,7 +440,7 @@ static void test_empty_getfirst_is_index_out_of_range() {
 }
 
 //Streams
-static void test_sequence_read_stream() {
+void test_sequence_read_stream() {
     int d[] = {1, 2, 3, 4};
     MutableArraySequence<int> seq(d, 4);
     SequenceReadStream<int> rs(&seq);
@@ -452,7 +452,7 @@ static void test_sequence_read_stream() {
     rs.Close();
 }
 
-static void test_sequence_read_stream_not_open() {
+void test_sequence_read_stream_not_open() {
     int d[] = {1};
     MutableArraySequence<int> seq(d, 1);
     SequenceReadStream<int> rs(&seq);
@@ -461,7 +461,7 @@ static void test_sequence_read_stream_not_open() {
     assert(thrown);
 }
 
-static void test_sequence_write_stream() {
+void test_sequence_write_stream() {
     MutableArraySequence<int>* sink = new MutableArraySequence<int>();
     SequenceWriteStream<int> ws(sink);
     ws.Open();
@@ -475,7 +475,7 @@ static void test_sequence_write_stream() {
     delete sink;
 }
 
-static void test_lazy_read_stream_infinite() {
+void test_lazy_read_stream_infinite() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -489,14 +489,14 @@ static void test_lazy_read_stream_infinite() {
 }
 
 //Codec
-static void test_caesar_codec() {
+void test_caesar_codec() {
     CaesarCodec c(3);
     assert(c.Encode('a') == 'd');
     assert(c.Encode('A') == 'D');
     assert(c.Decode('d') == 'a');
 }
 
-static void test_xor_codec() {
+void test_xor_codec() {
     const char* key = "K";
     XorCodec c(key, 1);
     char e = c.Encode('A');
@@ -505,7 +505,7 @@ static void test_xor_codec() {
 }
 
 //StreamCoder
-static Sequence<char>* RunCoder(const char* in, int len, Codec<char>* codec, size_t bufSize, bool encode) {
+Sequence<char>* RunCoder(const char* in, int len, Codec<char>* codec, size_t bufSize, bool encode) {
     char* mutData = new char[len];
     std::memcpy(mutData, in, len);
     MutableArraySequence<char>* src = new MutableArraySequence<char>(mutData, len);
@@ -523,7 +523,7 @@ static Sequence<char>* RunCoder(const char* in, int len, Codec<char>* codec, siz
     return sink;
 }
 
-static void test_coder_caesar_encode() {
+void test_coder_caesar_encode() {
     CaesarCodec codec(3);
     Sequence<char>* out = RunCoder("hello", 5, &codec, 2, true);
     assert(out->GetLength() == 5);
@@ -532,7 +532,7 @@ static void test_coder_caesar_encode() {
     delete out;
 }
 
-static void test_coder_roundtrip_caesar() {
+void test_coder_roundtrip_caesar() {
     CaesarCodec codec(7);
     const char* in = "Hello, World!";
     int len = static_cast<int>(std::strlen(in));
@@ -547,7 +547,7 @@ static void test_coder_roundtrip_caesar() {
     delete dec;
 }
 
-static void test_coder_roundtrip_xor() {
+void test_coder_roundtrip_xor() {
     XorCodec codec("SecretKey", 9);
     const char* in = "Test message";
     int len = static_cast<int>(std::strlen(in));
@@ -561,7 +561,7 @@ static void test_coder_roundtrip_xor() {
     delete dec;
 }
 
-static void test_coder_empty() {
+void test_coder_empty() {
     CaesarCodec codec(1);
     MutableArraySequence<char>* src = new MutableArraySequence<char>();
     SequenceReadStream<char> rs(src);
@@ -576,7 +576,7 @@ static void test_coder_empty() {
     delete sink;
 }
 
-static void test_coder_various_buffer_sizes() {
+void test_coder_various_buffer_sizes() {
     CaesarCodec codec(5);
     const char* in = "Test-string";
     int len = static_cast<int>(std::strlen(in));
@@ -593,7 +593,7 @@ static void test_coder_various_buffer_sizes() {
     }
 }
 
-static void test_coder_bad_buffer() {
+void test_coder_bad_buffer() {
     CaesarCodec codec(1);
     bool thrown = false;
     try {
@@ -602,7 +602,7 @@ static void test_coder_bad_buffer() {
     assert(thrown);
 }
 
-static void test_lazy_prepend_infinite() {
+void test_lazy_prepend_infinite() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -614,7 +614,7 @@ static void test_lazy_prepend_infinite() {
     delete shifted;
 }
 
-static void test_lazy_insert_infinite() {
+void test_lazy_insert_infinite() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -626,7 +626,7 @@ static void test_lazy_insert_infinite() {
     delete withInserted;
 }
 
-static void test_lazy_concat_finite_infinite() {
+void test_lazy_concat_finite_infinite() {
     int f[] = {10, 20, 30};
     LazySequence<int> finite(f, 3);
     TestIncRule rule;
@@ -642,7 +642,7 @@ static void test_lazy_concat_finite_infinite() {
     delete c;
 }
 
-static void test_lazy_concat_infinite_left() {
+void test_lazy_concat_infinite_left() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -656,7 +656,7 @@ static void test_lazy_concat_infinite_left() {
     delete c;
 }
 
-static void test_lazy_map_infinite() {
+void test_lazy_map_infinite() {
     TestIncRule rule;
     int init[] = {0};
     MutableArraySequence<int> initial(init, 1);
@@ -668,7 +668,7 @@ static void test_lazy_map_infinite() {
     delete squared;
 }
 
-static void test_lazy_zip_finite() {
+void test_lazy_zip_finite() {
     int a[] = {1, 2, 3, 4};
     int b[] = {10, 20, 30};
     LazySequence<int> la(a, 4);
@@ -680,7 +680,7 @@ static void test_lazy_zip_finite() {
     delete z;
 }
 
-static void test_lazy_zip_finite_infinite() {
+void test_lazy_zip_finite_infinite() {
     int a[] = {1, 2, 3};
     LazySequence<int> la(a, 3);
     TestAddTenRule rule;
@@ -694,7 +694,7 @@ static void test_lazy_zip_finite_infinite() {
     delete z;
 }
 
-static void test_lazy_zip_infinite() {
+void test_lazy_zip_infinite() {
     TestIncRule ruleA;
     TestPow2Rule ruleB;
     int initA[] = {1};
@@ -711,14 +711,14 @@ static void test_lazy_zip_infinite() {
 }
 
 // Файловые потоки
-static std::string MakeTempFilePath(const std::string& tag) {
+std::string MakeTempFilePath(const std::string& tag) {
     char buf[256];
     std::snprintf(buf, sizeof(buf), "/tmp/lab4_test_%s_%d.dat",
                   tag.c_str(), static_cast<int>(std::rand()));
     return std::string(buf);
 }
 
-static void test_file_streams_roundtrip() {
+void test_file_streams_roundtrip() {
     std::string inPath = MakeTempFilePath("in");
     std::string encPath = MakeTempFilePath("enc");
     std::string outPath = MakeTempFilePath("out");
@@ -760,7 +760,7 @@ static void test_file_streams_roundtrip() {
     std::remove(outPath.c_str());
 }
 
-static void test_file_stream_seek() {
+void test_file_stream_seek() {
     std::string path = MakeTempFilePath("seek");
     {
         std::ofstream fout(path.c_str(), std::ios::binary);
@@ -775,7 +775,7 @@ static void test_file_stream_seek() {
     std::remove(path.c_str());
 }
 
-static void test_stress_one_million() {
+void test_stress_one_million() {
     TestAlphabetRule rule;
     char init[] = {'a'};
     MutableArraySequence<char> initial(init, 1);
@@ -799,7 +799,7 @@ static void test_stress_one_million() {
     delete sink;
 }
 
-static void test_stress_roundtrip_500k() {
+void test_stress_roundtrip_500k() {
     TestAlphabetRule rule;
     char init[] = {'a'};
     MutableArraySequence<char> initial(init, 1);
@@ -830,7 +830,7 @@ static void test_stress_roundtrip_500k() {
     delete decoded;
 }
 
-static void test_coder_encode_n_lazy() {
+void test_coder_encode_n_lazy() {
     TestAlphabetRule rule;
     char init[] = {'a'};
     MutableArraySequence<char> initial(init, 1);

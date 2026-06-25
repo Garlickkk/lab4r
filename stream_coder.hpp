@@ -18,7 +18,7 @@ public:
 class CaesarCodec : public Codec<char> {
 private:
     int shift; // ключ(сколько сдвиг)
-    static char ShiftLatin(char c, int s) {
+    char ShiftLatin(char c, int s) const {
         if (c >= 'a' && c <= 'z') {
             return static_cast<char>('a' + ((c - 'a' + s) % 26 + 26) % 26); // преобр из int к chat
         }

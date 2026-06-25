@@ -1,7 +1,6 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <limits>
 #include "array_sequence.hpp"
 #include "lazy_seq.hpp"
 #include "streams.hpp"
@@ -12,7 +11,7 @@ void runAllTests();
 
 void clearInputBuffer() { // ф-ции для очистки буфера
     std::cin.clear();
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // уд всех сим в строке
+    std::cin.ignore(10000, '\n'); // уд всех сим в строке
 }
 
 int readInt(const std::string& prompt) { // безопасное чтение целых
@@ -33,13 +32,13 @@ std::string readString(const std::string& prompt) { // безопасное чт
     return line;
 }
 
-static Sequence<char>* StringToSequence(const std::string& s) {
+Sequence<char>* StringToSequence(const std::string& s) {
     auto seq = new MutableArraySequence<char>();
     for (char c : s) seq->Append(c); // копируем каждый символ
     return seq;
 }
 
-static std::string PrintableSequence(const Sequence<char>* seq, int maxShow = 80) {
+std::string PrintableSequence(const Sequence<char>* seq, int maxShow = 80) {
     std::ostringstream os;
     int n = seq->GetLength();
     int show = std::min(n, maxShow);
@@ -64,7 +63,7 @@ struct CoderConfig {
     size_t bufferSize = 16;
 };
 
-static Codec<char>* MakeCodec(const CoderConfig& cfg) {
+Codec<char>* MakeCodec(const CoderConfig& cfg) {
     switch (cfg.codecKind) {
         case 1: return new CaesarCodec(cfg.caesarShift);
         case 2: return new XorCodec(cfg.xorKey.c_str(), static_cast<int>(cfg.xorKey.size()));
@@ -72,7 +71,7 @@ static Codec<char>* MakeCodec(const CoderConfig& cfg) {
     }
 }
 
-static std::string CodecName(const CoderConfig& cfg) {
+std::string CodecName(const CoderConfig& cfg) {
     switch (cfg.codecKind) {
         case 1: return "Caesar(shift=" + std::to_string(cfg.caesarShift) + ")";
         case 2: return "XOR(key=\"" + cfg.xorKey + "\")";
@@ -80,7 +79,7 @@ static std::string CodecName(const CoderConfig& cfg) {
     }
 }
 
-static void Configure(CoderConfig& cfg) {
+void Configure(CoderConfig& cfg) {
     std::cout << "\nНастройка кодека\n";
     cfg.codecKind = readInt("1. Caesar  2. XOR\nВыбор: ");
 
@@ -97,7 +96,7 @@ static void Configure(CoderConfig& cfg) {
     std::cout << "Сохранено: " << CodecName(cfg) << ", буфер " << cfg.bufferSize << "\n";
 }
 
-static void RunOnText(const CoderConfig& cfg, bool encode) {
+void RunOnText(const CoderConfig& cfg, bool encode) {
     std::string line = readString("\nВведите текст (одной строкой): ");
     Sequence<char>* input = StringToSequence(line);
     MutableArraySequence<char>* output = new MutableArraySequence<char>();
@@ -122,7 +121,7 @@ static void RunOnText(const CoderConfig& cfg, bool encode) {
     delete codec; delete input; delete output;
 }
 
-static void RunOnFile(const CoderConfig& cfg, bool encode) {
+void RunOnFile(const CoderConfig& cfg, bool encode) {
     std::string inPath = readString("\nПуть к входному файлу: ");
     std::string outPath = readString("Путь к выходному файлу: ");
 
@@ -151,7 +150,7 @@ struct FibonacciRule {
     }
 };
 
-static void DemoLazySequence() {
+void DemoLazySequence() {
     std::cout << "\n--- Демонстрация LazySequence (Фибоначчи) ---\n";
 
     FibonacciRule rule;
@@ -190,7 +189,7 @@ struct AlphabetRule {
     }
 };
 
-static void DemoLazyEncoding(const CoderConfig& cfg) {
+void DemoLazyEncoding(const CoderConfig& cfg) {
     std::cout << "\n--- Кодирование префикса ленивого потока ---\n";
 
     AlphabetRule rule;

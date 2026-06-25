@@ -37,7 +37,7 @@ struct LazyModification {
 
     LazyModification() : isInsert(true), sourceIndex(0), value() {}
 
-    static LazyModification<T> Insert(int idx, T v) { // статик для того, чтобы вызвать функцию без создания объекта
+    static LazyModification<T> Insert(int idx, T v) { // статик для того, чтобы вызвать функцию без создания объекта каждый раз
         LazyModification<T> m;
         m.isInsert = true;
         m.sourceIndex = idx;

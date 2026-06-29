@@ -13,7 +13,7 @@ template <class T>
 class Optional {
 private:
     T val; // значение
-    bool has_value; // Флаг наличия
+    bool has_value; // Флаг наличия (false for )
 
 public:
     Optional() : val(), has_value(false) {} // Конструктор по умолчанию: значения нет
@@ -68,6 +68,9 @@ public:
     : buf(std::max(1, cap)),
       capacity(std::max(1, cap)),
       size(0), head(0), total(0) {}
+
+    GeneratorWindow(const GeneratorWindow<T>& other)
+    : buf(other.buf), capacity(other.capacity), size(other.size), head(other.head), total(other.total) {}
 
     void Push(T v) {
         if (size < capacity) {
@@ -128,33 +131,35 @@ public:
 template <class T>
 class Generator {
 public:
-    explicit Generator(LazySequence<T>* owner) // базовый конструктор для готовых списков
-        : owner(owner), sourcePos(0), currentMod(0), window(nullptr), hasRule(false) {}
-
-    Generator(LazySequence<T>* owner, std::function<T(Sequence<T>*)> r, int windowCap = 1) // вычисление беск
-        : owner(owner), sourcePos(0), currentMod(0), rule(r), hasRule(true) {
-        window = new GeneratorWindow<T>(windowCap);
+    explicit Generator(LazySequence<T>* owner)
+        : owner(owner), sourcePos(0), currentMod(0),
+          rule(owner->rule), hasRule(owner->hasRule) {
+        if (hasRule) {
+            window = new GeneratorWindow<T>(owner->windowSize);
+        } else {
+            window = nullptr;
+        }
     }
 
     Generator(const Generator<T>& other) // конструктор копирования (insertAt+remove)
         : owner(other.owner), sourcePos(other.sourcePos), mods(other.mods),
           currentMod(other.currentMod), rule(other.rule), hasRule(other.hasRule) {
         if (other.window) {
-            window = new GeneratorWindow<T>(other.window->GetLength());
+            window = new GeneratorWindow<T>(*other.window);
         } else {
             window = nullptr;
         }
     }
 
     Generator(LazySequence<T>* owner, int index, T item) // вставка 1 эл
-        : owner(owner), sourcePos(0), currentMod(0), window(nullptr), hasRule(false) {
+        : Generator(owner) {
         InsertSorted(LazyModification<T>::Insert(index, item));
     }
 
     Generator(LazySequence<T>* owner, int index, Sequence<T>* items) // вставка массива
-        : owner(owner), sourcePos(0), currentMod(0), window(nullptr), hasRule(false) {
+        : Generator(owner) {
         for (int i = 0; i < items->GetLength(); i++) {
-            InsertSorted(LazyModification<T>::Insert(index + i, items->Get(i)));
+            InsertSorted(LazyModification<T>::Insert(index, items->Get(i)));
         }
     }
 
@@ -183,7 +188,16 @@ public:
         if (!HasNext()) {
             throw IndexOutOfRangeException("Достигнут конец последовательности");
         }
-        Skip();
+
+        while (currentMod < mods.GetLength()) {
+            const LazyModification<T>& m = mods.Get(currentMod);
+            if (!m.isInsert && m.sourceIndex == sourcePos) {
+                AdvanceSource();
+                currentMod++;
+            } else {
+                break;
+            }
+        }
 
         if (currentMod < mods.GetLength()) {
             const LazyModification<T>& m = mods.Get(currentMod);
@@ -194,9 +208,7 @@ public:
             }
         }
 
-        T v = owner->Get(sourcePos);
-        sourcePos++;
-        return v;
+        return AdvanceSource();
     }
 
     Optional<T> TryGetNext() {
@@ -216,7 +228,7 @@ public:
         Generator<T>* g = new Generator<T>(*this);
         int endPos = owner->GetLength();
         for (int i = 0; i < items->GetLength(); i++) {
-            g->InsertSorted(LazyModification<T>::Insert(endPos + i, items->Get(i)));
+            g->InsertSorted(LazyModification<T>::Insert(endPos, items->Get(i)));
         }
         return g;
     }
@@ -230,12 +242,13 @@ public:
     Generator<T>* Insert(Sequence<T>* items) const { // вставка коллекции в текущую позицию генератора
         Generator<T>* g = new Generator<T>(*this);
         for (int i = 0; i < items->GetLength(); i++) {
-            g->InsertSorted(LazyModification<T>::Insert(sourcePos + i, items->Get(i)));
+            g->InsertSorted(LazyModification<T>::Insert(sourcePos, items->Get(i)));
         }
         return g;
     }
 
     Generator<T>* Remove(T item) const { // уд первого вхождения по эл
+        if (owner->IsInfinite()) throw InfiniteSequenceException("Нельзя удалять по значению из бесконечной последовательности");
         Generator<T>* g = new Generator<T>(*this);
         int idx = g->FindRemovalIndex(item);
         if (idx != -1) {
@@ -243,7 +256,9 @@ public:
         }
         return g;
     }
+
     Generator<T>* Remove(Sequence<T>* items) const { // удаление всех вхождений коллекции по зачениям
+        if (owner->IsInfinite()) throw InfiniteSequenceException("Нельзя удалять по значению из бесконечной последовательности");
         Generator<T>* g = new Generator<T>(*this);
         for (int i = 0; i < items->GetLength(); i++) {
             int idx = g->FindRemovalIndex(items->Get(i));
@@ -263,16 +278,18 @@ private:
     std::function<T(Sequence<T>*)> rule;
     bool hasRule; // флаг работант ли по правилу или просто
 
-    void Skip() {
-        while (currentMod < mods.GetLength()) {
-            const LazyModification<T>& m = mods.Get(currentMod);
-            if (!m.isInsert && m.sourceIndex == sourcePos) {
-                sourcePos++;
-                currentMod++;
-            } else {
-                break;
-            }
+    T AdvanceSource() {
+        T v;
+        if (hasRule && sourcePos >= owner->GetMaterializedCount()) {
+            v = rule(window);
+        } else {
+            v = owner->Get(sourcePos);
         }
+        if (hasRule) {
+            window->Push(v);
+        }
+        sourcePos++;
+        return v;
     }
 
     void InsertSorted(LazyModification<T> m) { // метод для добавления правок с сохранением п-ти
@@ -296,15 +313,8 @@ private:
         return false;
     }
 
-    void CheckRemoveIndex(int index) const { // можно ли уд индекс?
-        if (index < 0 || (!owner->IsInfinite() && index >= owner->GetLength())) {
-            throw IndexOutOfRangeException("Некорректный индекс для удаления");
-        }
-    }
-
     int FindRemovalIndex(T item) const { // поиск индекса первого эл с этим значением
-        int limit = owner->IsInfinite() ? 1000 : owner->GetLength(); // если список беск проверяем только 1000
-        for (int i = 0; i < limit; i++) {
+        for (int i = 0; i < owner->GetLength(); i++) {
             if (owner->Get(i) == item && !HasRemoveModAt(i)) return i; // значение совпало и не будет уд
         }
         return -1;
@@ -329,7 +339,7 @@ struct ZipRule {
     std::function<T(T, T)> f;
     ZipRule(LazySequence<T>* s, LazySequence<T>* o, std::function<T(T, T)> func)
         : selfPtr(s), otherPtr(o), f(func) {}
-    T operator()(Sequence<T>* curr) const { // для сохранения указателей на 2 п-ти
+    T operator()(Sequence<T>* curr) const { // превращение объекта в вызываемую сущность для работы как с функцией, но хранящей внтури данные
         int n = curr->GetLength();
         return f(selfPtr->Get(n), otherPtr->Get(n));
     }
@@ -378,11 +388,13 @@ struct ConcatTwoRule {
 
 template <class T>
 class LazySequence : public Sequence<T> {
+    friend class Generator<T>;
 private:
     mutable ArraySequence<T>* storage; // вычисленные элементы
     std::function<T(Sequence<T>*)> rule; // правило создания
     bool hasRule;
     int totalLength; // длина (-1 - бесконечна)
+    int windowSize;
 
     void GrowOne(T value) const { // добавление эл в выч
         Sequence<T>* next = storage->Append(value);
@@ -414,15 +426,15 @@ private:
 public:
     LazySequence() // конструктор по ум пуст п-ть
         : storage(new ImmutableArraySequence<T>()),
-          hasRule(false), totalLength(0) {}
+          hasRule(false), totalLength(0), windowSize(0) {}
 
     LazySequence(T* items, int count) // п-ть из массива (конечна)
         : storage(new ImmutableArraySequence<T>(items, count)),
-          hasRule(false), totalLength(count) {}
+          hasRule(false), totalLength(count), windowSize(0) {}
 
     LazySequence(Sequence<T>* seq) // копирование из другой
         : storage(new ImmutableArraySequence<T>()),
-          hasRule(false), totalLength(0) {
+          hasRule(false), totalLength(0), windowSize(0) {
         if (seq->GetLength() < 0) {
             delete storage;
             throw InfiniteSequenceException("Нельзя скопировать бесконечную последовательность поэлементно");
@@ -435,7 +447,7 @@ public:
 
     LazySequence(std::function<T(Sequence<T>*)> r, Sequence<T>* initial, int total = -1) // с правилом
         : storage(new ImmutableArraySequence<T>()),
-          rule(r), hasRule(true), totalLength(total) {
+          rule(r), hasRule(true), totalLength(total), windowSize(initial->GetLength()) {
         for (int i = 0; i < initial->GetLength(); i++) {
             GrowOne(initial->Get(i));
         }
@@ -443,7 +455,7 @@ public:
 
     LazySequence(const LazySequence<T>& other) // копирующий конструктор
         : storage(new MutableArraySequence<T>(*other.storage)),
-          rule(other.rule), hasRule(other.hasRule), totalLength(other.totalLength) {}
+          rule(other.rule), hasRule(other.hasRule), totalLength(other.totalLength), windowSize(other.windowSize) {}
 
     LazySequence<T>& operator=(const LazySequence<T>& other) { // оператор присваивания
         if (this != &other) {
@@ -453,6 +465,7 @@ public:
             rule = other.rule;
             hasRule = other.hasRule;
             totalLength = other.totalLength;
+            windowSize = other.windowSize;
         }
         return *this;
     }
@@ -592,9 +605,6 @@ public:
     }
 
     Generator<T>* CreateGenerator() {
-        if (hasRule) {
-            return new Generator<T>(this, rule);
-        }
         return new Generator<T>(this);
     }
 };

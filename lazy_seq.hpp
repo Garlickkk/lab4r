@@ -13,7 +13,7 @@ template <class T>
 class Optional {
 private:
     T val; // значение
-    bool has_value; // Флаг наличия (false for )
+    bool has_value; // Флаг наличия 
 
 public:
     Optional() : val(), has_value(false) {} // Конструктор по умолчанию: значения нет
@@ -30,7 +30,7 @@ public:
 };
 
 template <class T>
-struct LazyModification {
+struct LazyModification { // для generator
     bool isInsert; // true = вставка, false = удаление
     int sourceIndex; // индекс в ориг п-ти
     T value;
@@ -65,7 +65,7 @@ private:
 
 public:
     explicit GeneratorWindow(int cap)
-    : buf(std::max(1, cap)),
+    : buf(std::max(1, cap)), // max для защиты от 0 / отриц
       capacity(std::max(1, cap)),
       size(0), head(0), total(0) {}
 

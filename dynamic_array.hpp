@@ -60,13 +60,8 @@ template <class T>
 DynamicArray<T>& DynamicArray<T>::operator=(const DynamicArray<T>& other) {
     if (this != &other) {
         T* newData = new T[other.size];
-        try {
-            for (int i = 0; i < other.size; i++) {
-                newData[i] = other.data[i];
-            }
-        } catch (...) {
-            delete[] newData;
-            throw;
+        for (int i = 0; i < other.size; i++) {
+            newData[i] = other.data[i];
         }
         delete[] this->data;
         this->data = newData;
@@ -108,14 +103,11 @@ void DynamicArray<T>::Resize(int newSize) {
     }
     T* newData = new T[newSize];
     int copyCount = std::min(this->size, newSize);
-    try {
-        for (int i = 0; i < copyCount; i++) {
-            newData[i] = this->data[i];
-        }
-    } catch (...) {
-        delete[] newData;
-        throw;
+
+    for (int i = 0; i < copyCount; i++) {
+        newData[i] = this->data[i];
     }
+
     delete[] this->data;
     this->data = newData;
     this->size = newSize;

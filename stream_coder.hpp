@@ -10,7 +10,7 @@ class Codec {
 public:
     virtual T Encode(T item) const = 0;
     virtual T Decode(T item) const = 0;
-    virtual void Reset() const {} // сброс внутреннего состояния перед новым проходом;
+    virtual void Reset() const {} // сброс внутреннего состояния перед новым проходом(Xor если тот же объект но уже новый файл)
     virtual ~Codec() = default;
 };
 

@@ -2,7 +2,6 @@
 #include <string>
 #include <sstream>
 #include <algorithm>
-#include <memory>
 #include "array_sequence.hpp"
 #include "lazy_seq.hpp"
 #include "streams.hpp"

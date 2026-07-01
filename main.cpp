@@ -11,8 +11,8 @@
 void runAllTests();
 
 void clearInputBuffer() {
-    std::cin.clear();
-    std::cin.ignore(10000, '\n');
+    std::cin.clear(); // сброс ошибки
+    std::cin.ignore(10000, '\n'); // очистка
 }
 
 int readInt(const std::string& prompt) { // без чтенение целого
